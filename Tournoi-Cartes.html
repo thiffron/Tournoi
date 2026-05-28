@@ -76,7 +76,6 @@
     border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;
   }
   .setup h2, .actions-card h2 { margin: 0 0 1rem; font-size: 1.05rem; font-weight: 600; color: var(--warm); }
-  #panel-documents .actions-card:last-child { margin-bottom: 0; }
   /* Mobile par défaut : champs empilés (1 par ligne) */
   .field-grid {
     display: grid; grid-template-columns: 1fr;
@@ -121,7 +120,7 @@
   }
   .name-field input:focus { outline: 2px solid var(--warm); outline-offset: -1px; }
   /* Onglets */
-  .tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
   .tab {
     font-family: inherit; font-size: 0.9rem; font-weight: 500;
     background: transparent; color: var(--text-secondary);
@@ -149,21 +148,18 @@
   .sc-cumul-text { margin-right: 0.4rem; }
   .sc-table-head { font-weight: 700; color: var(--text); font-size: 1.15rem; text-align: center; margin-bottom: 0.5rem; }
   .sc-cumul { font-weight: 700; font-size: 1rem; color: var(--text); background: var(--surface-2); text-align: center; }
-  .sc-flank { display: flex; align-items: flex-start; gap: 0.75rem; flex-wrap: wrap; }
-  .sc-flank .sc-grid { flex: 1 1 240px; min-width: 0; }
+  .sc-flank { display: flex; align-items: flex-end; gap: 0.6rem; }
+  .sc-flank .sc-grid { flex: 1; }
+  .sc-total-label { font-weight: 700; color: var(--warm); font-size: 0.95rem; flex-shrink: 0; padding-bottom: 0.6rem; white-space: nowrap; }
   .sc-add {
-    flex-shrink: 0; align-self: flex-end;
+    flex-shrink: 0; align-self: flex-end; margin-bottom: 0.35rem;
     display: inline-flex; align-items: center; justify-content: center;
-    gap: 0.4rem;
-    padding: 0.55rem 0.9rem;
-    cursor: pointer;
-    background: var(--accent); color: var(--accent-fg);
+    width: 2.4rem; height: 2.4rem; cursor: pointer;
+    background: var(--accent); color: #fff;
     border: none; border-radius: 8px;
-    font-family: inherit; font-size: 0.85rem; font-weight: 500;
-    white-space: nowrap;
   }
-  .sc-add svg { flex-shrink: 0; }
   .sc-add:hover { filter: brightness(1.1); }
+  .sc-add-spacer { width: 2.2rem; flex-shrink: 0; }
   .btn-reset { border: 1.5px solid var(--b-stroke) !important; color: var(--b-text); margin-top: 0.5rem; }
   .btn-reset:hover { background: var(--b-fill) !important; }
   /* Classement / Leaderboard */
@@ -297,64 +293,7 @@
 <h1 class="page-title">Tournoi de Cartes</h1>
 
 <main>
-  <div id="viewer" style="display:none;">
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-tab="schema">Schéma</button>
-      <button class="tab" data-tab="pointage">Pointage</button>
-      <button class="tab" data-tab="classement">Classement</button>
-      <button class="tab" data-tab="documents">Documents</button>
-      <button class="tab" data-tab="config">Configuration</button>
-    </div>
-    <div class="controls" id="controls">
-      <span class="tour-label" id="tour-label">Tour 1</span>
-      <div class="slider-wrap">
-        <input type="range" id="slider" min="1" max="1" value="1" step="1" aria-label="Tour">
-        <span class="counter" id="counter">1 / 1</span>
-      </div>
-      <div class="btn-group">
-        <button id="btn-prev" aria-label="Tour précédent">←</button>
-        <button id="btn-next" aria-label="Tour suivant">→</button>
-      </div>
-    </div>
-    <div class="tab-panel" id="panel-schema">
-      <div class="legend" id="legend"></div>
-      <div class="grid" id="grid"></div>
-      <div id="resting-section"></div>
-    </div>
-    <div class="tab-panel" id="panel-pointage" style="display:none;">
-      <div id="round-scores"></div>
-    </div>
-    <div class="tab-panel" id="panel-classement" style="display:none;">
-      <div id="leaderboard"></div>
-    </div>
-    <div class="tab-panel" id="panel-documents" style="display:none;">
-      <div class="actions-card panel-card">
-        <div class="actions">
-          <div class="btn-row">
-            <button id="btn-pdf-plan">Tours</button>
-            <button id="btn-pdf-list">Joueurs</button>
-          </div>
-          <div class="btn-row">
-            <button id="btn-pdf-score-table">Tableau</button>
-            <button id="btn-pdf-score-ind">Points</button>
-          </div>
-        </div>
-      </div>
-      <div class="actions-card panel-card">
-        <p class="names-note">Sauvegarde ta partie dans un fichier que tu peux recharger plus tard ou sur un autre appareil.</p>
-        <div class="actions">
-          <div class="btn-row">
-            <button id="btn-save">Sauvegarder</button>
-            <button id="btn-load">Charger</button>
-          </div>
-          <button id="btn-reset" class="btn-full btn-reset">Réinitialiser la partie</button>
-          <input type="file" id="file-load" accept="application/json,.json" style="display:none;">
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="setup" id="setup-card">
+  <div class="setup">
     <div class="field-grid">
       <div class="field">
         <label for="mode-input">Équipes</label>
@@ -408,6 +347,63 @@
       <div id="names-grid" class="names-grid"></div>
     </div>
     <button id="btn-generate" class="primary btn-full btn-generate">Générer</button>
+  </div>
+
+  <div class="actions-card" id="actions-card" style="display:none;">
+    <h2>Documents</h2>
+    <div class="actions">
+      <div class="btn-row">
+        <button id="btn-pdf-plan">Tours</button>
+        <button id="btn-pdf-list">Joueurs</button>
+      </div>
+      <div class="btn-row">
+        <button id="btn-pdf-score-table">Tableau</button>
+        <button id="btn-pdf-score-ind">Points</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions-card" id="profile-card" style="display:none;">
+    <h2>Profil</h2>
+    <p class="names-note">Sauvegarde ta partie dans un fichier que tu peux recharger plus tard ou sur un autre appareil.</p>
+    <div class="actions">
+      <div class="btn-row">
+        <button id="btn-save">Sauvegarder</button>
+        <button id="btn-load">Charger</button>
+      </div>
+      <button id="btn-reset" class="btn-full btn-reset">Réinitialiser la partie</button>
+      <input type="file" id="file-load" accept="application/json,.json" style="display:none;">
+    </div>
+  </div>
+
+  <div id="viewer" style="display:none;">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="schema">Schéma</button>
+      <button class="tab" data-tab="pointage">Pointage</button>
+      <button class="tab" data-tab="classement">Classement</button>
+    </div>
+    <div class="controls" id="controls">
+      <span class="tour-label" id="tour-label">Tour 1</span>
+      <div class="slider-wrap">
+        <input type="range" id="slider" min="1" max="1" value="1" step="1" aria-label="Tour">
+        <span class="counter" id="counter">1 / 1</span>
+      </div>
+      <div class="btn-group">
+        <button id="btn-prev" aria-label="Tour précédent">←</button>
+        <button id="btn-next" aria-label="Tour suivant">→</button>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-schema">
+      <div class="legend" id="legend"></div>
+      <div class="grid" id="grid"></div>
+      <div id="resting-section"></div>
+    </div>
+    <div class="tab-panel" id="panel-pointage" style="display:none;">
+      <div id="round-scores"></div>
+    </div>
+    <div class="tab-panel" id="panel-classement" style="display:none;">
+      <div id="leaderboard"></div>
+    </div>
   </div>
 
   <div class="info-zone" id="info-zone">
@@ -816,8 +812,8 @@ function generate() {
 function fail(msg) {
   document.getElementById('pdf-status').innerHTML =
     `<span style="color: var(--b-text);">⚠ ${msg}</span>`;
+  document.getElementById('actions-card').style.display = 'none';
   document.getElementById('viewer').style.display = 'none';
-  document.getElementById('setup-card').style.display = 'block';
   state = null;
 }
 
@@ -900,8 +896,9 @@ function setupViewer() {
   const slider = document.getElementById('slider');
   slider.max = state.rounds.length;
   slider.value = 1;
+  document.getElementById('actions-card').style.display = 'block';
+  document.getElementById('profile-card').style.display = 'block';
   document.getElementById('viewer').style.display = 'block';
-  document.getElementById('setup-card').style.display = 'none';
   renderLegend();
   renderTour(1);
   switchTab('schema');
@@ -1079,23 +1076,24 @@ function renderRoundScores(t) {
       const inputs = teamsInfo.map((info, e) => {
         const key = `r${t}t${ti}b${bi}e${e}`;
         const val = (state.scores && state.scores[key] != null) ? state.scores[key] : '';
-        return `<td><input class="sc-input" type="text" inputmode="numeric" pattern="-?[0-9]*" data-key="${key}" value="${val}"></td>`;
+        return `<td><input class="sc-input" type="text" inputmode="numeric" pattern="-?[0-9]*" data-key="${key}" value="${val}" placeholder="–"></td>`;
       }).join('');
       brasseRows += `<tr>${inputs}</tr>`;
     }
-    // cases cumul (dans le pied de la table) — vide si rien n'est saisi
+    // cases cumul (dans le pied de la table)
     const cumulCells = teamsInfo.map((info, e) => {
       const c = tableCumul(t, ti, e);
-      return `<td class="sc-cumul" data-cumul="r${t}t${ti}e${e}">${c == null ? '' : c}</td>`;
+      return `<td class="sc-cumul" data-cumul="r${t}t${ti}e${e}">${c == null ? '–' : c}</td>`;
     }).join('');
-    const addRowIcon = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M3 12h13"/><path d="M3 18h13"/><path d="M19 12v6"/><path d="M16 15h6"/></svg>`;
+    const plusIcon = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
     const addBtn = nb < 5
-      ? `<button class="sc-add" data-table="${ti}" title="Ajouter une ligne" aria-label="Ajouter une ligne">${addRowIcon}<span>Ajouter une ligne</span></button>`
-      : '';
+      ? `<button class="sc-add" data-table="${ti}" title="Ajouter une brasse" aria-label="Ajouter une brasse">${plusIcon}</button>`
+      : `<span class="sc-add-spacer"></span>`;
     tablesHtml += `
       <div class="sc-table-block">
         <div class="sc-table-head">Table ${ti + 1}</div>
         <div class="sc-flank">
+          <span class="sc-total-label">Total :</span>
           <table class="sc-grid">
             <thead><tr>${headCells}</tr></thead>
             <tbody>${brasseRows}</tbody>
@@ -1124,15 +1122,15 @@ function renderRoundScores(t) {
         const cell = cont.querySelector(`[data-cumul="${cumKey}"]`);
         if (cell) {
           const c = tableCumul(tt, tti, tte);
-          cell.textContent = c == null ? '' : c;
+          cell.textContent = c == null ? '–' : c;
         }
       }
     });
   });
-  // brancher les boutons "Ajouter une ligne"
+  // brancher les boutons "+ Brasse"
   cont.querySelectorAll('.sc-add').forEach(btn => {
     btn.addEventListener('click', e => {
-      const ti = parseInt(e.currentTarget.dataset.table, 10);
+      const ti = parseInt(e.target.dataset.table, 10);
       const k = `r${t}t${ti}`;
       if (state.brasses[k] < 5) state.brasses[k]++;
       renderRoundScores(t);
@@ -1231,21 +1229,15 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'ArrowRight') renderTour(v + 1);
 });
 
-/* ---- Onglets : Schéma | Pointage | Classement | Documents | Configuration ---- */
+/* ---- Onglets : Schéma | Pointage | Classement ---- */
 let currentTab = 'schema';
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  ['schema', 'pointage', 'classement', 'documents'].forEach(p => {
-    const panel = document.getElementById('panel-' + p);
-    if (panel) panel.style.display = tab === p ? 'block' : 'none';
-  });
-  // Configuration : on réaffiche la carte setup (en dehors du viewer)
-  const setupCard = document.getElementById('setup-card');
-  if (setupCard) setupCard.style.display = tab === 'config' ? 'block' : 'none';
-  // le navigateur de tours n'a de sens que pour les 3 vues de jeu
-  const controls = document.getElementById('controls');
-  if (controls) controls.style.display = ['schema', 'pointage', 'classement'].includes(tab) ? 'flex' : 'none';
+  document.getElementById('panel-schema').style.display = tab === 'schema' ? 'block' : 'none';
+  document.getElementById('panel-pointage').style.display = tab === 'pointage' ? 'block' : 'none';
+  document.getElementById('panel-classement').style.display = tab === 'classement' ? 'block' : 'none';
+  // le navigateur de tours pilote les 3 onglets : toujours visible
   if (tab === 'classement') renderLeaderboard(parseInt(document.getElementById('slider').value, 10));
 }
 document.querySelectorAll('.tab').forEach(btn =>
