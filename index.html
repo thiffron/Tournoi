@@ -1439,6 +1439,39 @@ function computePositions(n, pageW, pageH, sz) {
   return pos;
 }
 
+// Tronque un texte (avec …) pour qu'il tienne dans maxW (police courante)
+function fitText(doc, s, maxW) {
+  s = String(s);
+  if (doc.getTextWidth(s) <= maxW) return s;
+  let t = s;
+  while (t.length > 1 && doc.getTextWidth(t + '…') > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+
+// Légende « Joueurs » (numéro — nom) imprimée à côté du schéma
+function drawNamesLegend(doc, x0, y0, w, h) {
+  doc.setFillColor(248,247,243); doc.setDrawColor(211,209,199); doc.setLineWidth(0.3);
+  doc.roundedRect(x0, y0, w, h, 2, 2, 'FD');
+  doc.setTextColor(PDF_HEADER_RGB[0],PDF_HEADER_RGB[1],PDF_HEADER_RGB[2]);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9);
+  doc.text('Joueurs', x0+3, y0+6);
+  const startY = y0 + 11, lineH = 4.2;
+  const perCol = Math.max(1, Math.floor((h - 13) / lineH));
+  const cols = Math.max(1, Math.ceil(state.N / perCol));
+  const colW = (w - 4) / cols;
+  for (let p = 1; p <= state.N; p++) {
+    const idx = p - 1;
+    const x = x0 + 2 + Math.floor(idx / perCol) * colW;
+    const y = startY + (idx % perCol) * lineH;
+    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(95,94,90);
+    doc.text(String(p), x, y);
+    const nm = playerNames[p];
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(nm ? 44 : 170, nm ? 44 : 168, nm ? 42 : 160);
+    doc.text(fitText(doc, nm || '—', colW - 9), x + 7, y);
+  }
+}
+
 function drawPlanPage(doc, round, rIdx, pageW, pageH, isFixed) {
   doc.setFillColor(PDF_HEADER_RGB[0],PDF_HEADER_RGB[1],PDF_HEADER_RGB[2]); doc.rect(0,0,pageW,15,'F');
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14);
@@ -1450,9 +1483,14 @@ function drawPlanPage(doc, round, rIdx, pageW, pageH, isFixed) {
   const tables = isFixed
     ? round.tables.map(idxs => ({ teams: idxs.map(gi=>state.teams[gi]), teamIdxs: idxs }))
     : round.tables.map(teams => ({ teams, teamIdxs: null }));
+  // si des noms sont saisis, réserver une colonne à droite pour la légende « Joueurs »
+  const hasNames = maxNamedPlayer() > 0;
+  const legendW = hasNames ? 56 : 0;
+  const areaW = pageW - legendW;
   const sz = 42;
-  const positions = computePositions(tables.length, pageW, pageH, sz);
+  const positions = computePositions(tables.length, areaW, pageH, sz);
   tables.forEach((tb, i) => drawTablePdf(doc, positions[i].x, positions[i].y, tb.teams, i, isFixed, tb.teamIdxs));
+  if (hasNames) drawNamesLegend(doc, areaW + 2, 20, legendW - 6, pageH - 28);
 
   let restItems = [];
   if (isFixed && round.restingTeams && round.restingTeams.length)
@@ -1462,14 +1500,14 @@ function drawPlanPage(doc, round, rIdx, pageW, pageH, isFixed) {
   if (restItems.length) {
     const ry = pageH-20;
     doc.setFillColor(241,239,232); doc.setDrawColor(211,209,199); doc.setLineWidth(0.3);
-    doc.roundedRect(10, ry-6, pageW-20, 12, 2, 2, 'FD');
+    doc.roundedRect(10, ry-6, areaW-20, 12, 2, 2, 'FD');
     doc.setTextColor(95,94,90); doc.setFont('helvetica','bold'); doc.setFontSize(9);
     doc.text('Au repos : ', 14, ry+1);
-    doc.setFont('helvetica','normal'); doc.text(restItems.join(' · '), 38, ry+1);
+    doc.setFont('helvetica','normal'); doc.text(fitText(doc, restItems.join(' · '), areaW-58), 38, ry+1);
   }
   doc.setTextColor(136,135,128); doc.setFont('helvetica','normal'); doc.setFontSize(7);
   doc.text(`Tournoi ${state.N} joueurs`, 10, pageH-5);
-  doc.text(`Page ${rIdx+1} / ${state.rounds.length}`, pageW-10, pageH-5, {align:'right'});
+  doc.text(`Page ${rIdx+1} / ${state.rounds.length}`, areaW-6, pageH-5, {align:'right'});
 }
 
 function buildPlanPdf() {
@@ -1620,8 +1658,10 @@ function drawScoreSheet(doc, id, schedule, isFixed, x, y, w, h) {
       doc.setDrawColor(211,209,199); doc.setLineWidth(0.2);
       doc.line(tableX+colTour+colVs, ry, tableX+tableW, ry+rowH);
     } else {
-      doc.setTextColor(12,68,124); doc.setFontSize(String(row.vs).length > 6 ? 7 : 9);
-      doc.text(String(row.vs), tableX+colTour+colVs/2, bl, {align:'center'});
+      doc.setTextColor(12,68,124);
+      const vsStr = String(row.vs);
+      doc.setFontSize(vsStr.length > 12 ? 6 : (vsStr.length > 6 ? 7 : 9));
+      doc.text(fitText(doc, vsStr, colVs-2), tableX+colTour+colVs/2, bl, {align:'center'});
     }
     doc.setDrawColor(211,209,199); doc.setLineWidth(0.2);
     doc.line(tableX, ry+rowH, tableX+tableW, ry+rowH);
