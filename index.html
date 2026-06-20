@@ -119,6 +119,13 @@
     border: 0.5px solid var(--border); border-radius: 6px; padding: 0.35rem 0.5rem;
   }
   .name-field input:focus { outline: 2px solid var(--warm); outline-offset: -1px; }
+  .name-del {
+    flex-shrink: 0; width: 1.6rem; height: 1.6rem; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0.5px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-size: 1.05rem; line-height: 1; cursor: pointer;
+  }
+  .name-del:hover { color: var(--warm-fg); background: var(--warm); border-color: var(--warm); }
   /* Onglets */
   .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
   .tab {
@@ -195,6 +202,8 @@
   .pointage-group select { width: 100%; cursor: pointer; }
   .info-zone { margin-top: 2rem; }
   .btn-generate { margin-top: 1.25rem; }
+  /* même écart au-dessus du bouton « Joueurs » qu'au-dessus de « Générer » */
+  .btn-names-toggle { margin-top: 1.25rem; }
   .fixed-zone {
     margin-top: 1rem; padding-top: 1rem;
     border-top: 0.5px solid var(--border-soft);
@@ -256,6 +265,29 @@
   .legend-a { background: var(--a-fill); border-color: var(--a-stroke); }
   .legend-b { background: var(--b-fill); border-color: var(--b-stroke); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  /* Schéma + liste des joueurs côte à côte */
+  .schema-layout { display: flex; gap: 1rem; align-items: flex-start; }
+  .schema-layout .grid { flex: 1; min-width: 0; }
+  .roster {
+    flex-shrink: 0; width: 190px;
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 12px; padding: 0.85rem 1rem;
+  }
+  .roster h3 { margin: 0 0 0.6rem; font-size: 0.9rem; font-weight: 600; color: var(--warm); }
+  .roster-list { display: flex; flex-direction: column; gap: 0.2rem; }
+  .roster-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; padding: 0.15rem 0; }
+  .roster-num {
+    min-width: 1.5rem; height: 1.5rem; flex-shrink: 0; border-radius: 5px;
+    background: var(--surface-2); color: var(--text-secondary);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .roster-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .roster-name.empty { color: var(--text-muted); }
+  @media (max-width: 640px) {
+    .schema-layout { flex-direction: column; }
+    .roster { width: auto; align-self: stretch; }
+  }
   .table-card {
     background: var(--surface); border: 0.5px solid var(--border);
     border-radius: 12px; padding: 1rem 0.5rem;
@@ -286,6 +318,30 @@
     color: var(--text-muted); font-size: 0.78rem; line-height: 1.6;
     position: relative; z-index: 1;
   }
+  /* Aperçu PDF (impression / téléchargement / partage) */
+  .modal {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .modal-box {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 12px; width: 100%; max-width: 900px; height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.85rem 1.1rem; border-bottom: 0.5px solid var(--border);
+  }
+  .modal-head span { font-size: 1rem; font-weight: 600; color: var(--warm); }
+  .modal-close {
+    width: 2rem; height: 2rem; padding: 0; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; border: 0.5px solid var(--border); border-radius: 8px;
+  }
+  #pdf-frame { flex: 1; width: 100%; border: none; background: var(--surface-2); }
+  .modal-actions { display: flex; gap: 0.6rem; padding: 0.85rem 1.1rem; border-top: 0.5px solid var(--border); }
+  .modal-actions button { flex: 1; }
 </style>
 </head>
 <body>
@@ -371,6 +427,7 @@
         <button id="btn-save">Sauvegarder</button>
         <button id="btn-load">Charger</button>
       </div>
+      <button id="btn-share-game" class="btn-full" style="display:none;">Envoyer la partie par courriel</button>
       <button id="btn-reset" class="btn-full btn-reset">Réinitialiser la partie</button>
       <input type="file" id="file-load" accept="application/json,.json" style="display:none;">
     </div>
@@ -395,7 +452,10 @@
     </div>
     <div class="tab-panel" id="panel-schema">
       <div class="legend" id="legend"></div>
-      <div class="grid" id="grid"></div>
+      <div class="schema-layout">
+        <div class="grid" id="grid"></div>
+        <aside class="roster" id="roster"></aside>
+      </div>
       <div id="resting-section"></div>
     </div>
     <div class="tab-panel" id="panel-pointage" style="display:none;">
@@ -410,6 +470,21 @@
     <div id="pdf-status"></div>
   </div>
 </main>
+
+<div class="modal" id="pdf-modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span id="pdf-modal-title">Aperçu</span>
+      <button class="modal-close" id="pdf-modal-close" aria-label="Fermer">×</button>
+    </div>
+    <iframe id="pdf-frame" title="Aperçu du document"></iframe>
+    <div class="modal-actions">
+      <button id="pdf-print">Imprimer</button>
+      <button id="pdf-download" class="primary">Télécharger</button>
+      <button id="pdf-share" style="display:none;">Partager / Courriel</button>
+    </div>
+  </div>
+</div>
 
 <footer>
   Pour usage privé seulement<br>
@@ -908,6 +983,22 @@ function setupViewer() {
 // Noms des joueurs — global, conservé même avant génération
 let playerNames = {};
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+}
+
+// Plus grand numéro de joueur ayant un nom saisi (0 si aucun)
+function maxNamedPlayer() {
+  let max = 0;
+  for (const k in playerNames) {
+    if (playerNames[k] && String(playerNames[k]).trim()) {
+      const n = parseInt(k, 10);
+      if (n > max) max = n;
+    }
+  }
+  return max;
+}
+
 function buildNamesGrid() {
   const grid = document.getElementById('names-grid');
   if (!grid) return;
@@ -917,7 +1008,8 @@ function buildNamesGrid() {
   for (let i = 1; i <= count; i++) {
     const val = playerNames[i] ? playerNames[i].replace(/"/g, '&quot;') : '';
     html += `<div class="name-field"><span class="name-num">${i}</span>` +
-            `<input type="text" data-num="${i}" value="${val}" placeholder="Nom" maxlength="24"></div>`;
+            `<input type="text" data-num="${i}" value="${val}" placeholder="Nom" maxlength="24">` +
+            `<button type="button" class="name-del" data-num="${i}" title="Supprimer ce nom" aria-label="Supprimer ce nom">×</button></div>`;
   }
   grid.innerHTML = html;
   grid.querySelectorAll('input').forEach(inp => {
@@ -925,6 +1017,16 @@ function buildNamesGrid() {
       const n = parseInt(e.target.dataset.num, 10);
       const v = e.target.value.trim();
       if (v) playerNames[n] = v; else delete playerNames[n];
+      renderRoster();
+    });
+  });
+  grid.querySelectorAll('.name-del').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const n = parseInt(e.currentTarget.dataset.num, 10);
+      delete playerNames[n];
+      const inp = grid.querySelector(`input[data-num="${n}"]`);
+      if (inp) inp.value = '';
+      renderRoster();
     });
   });
 }
@@ -933,6 +1035,20 @@ function buildNamesGrid() {
 function playerLabel(num) {
   const nm = playerNames[num];
   return nm ? `(${num}) ${nm}` : String(num);
+}
+
+// Liste « numéro — nom » à côté du schéma, pour repérer qui est qui
+function renderRoster() {
+  const el = document.getElementById('roster');
+  if (!el) return;
+  if (!state) { el.innerHTML = ''; return; }
+  let items = '';
+  for (let i = 1; i <= state.N; i++) {
+    const nm = playerNames[i];
+    items += `<div class="roster-item"><span class="roster-num">${i}</span>` +
+             `<span class="roster-name${nm ? '' : ' empty'}">${nm ? escapeHtml(nm) : '—'}</span></div>`;
+  }
+  el.innerHTML = `<h3>Joueurs</h3><div class="roster-list">${items}</div>`;
 }
 
 function renderLegend() {
@@ -1019,6 +1135,7 @@ function renderTour(t) {
     } else restSec.innerHTML = '';
     renderRoundScores(t);
   }
+  renderRoster();
   document.getElementById('btn-prev').disabled = (t === 1);
   document.getElementById('btn-next').disabled = (t === state.rounds.length);
   // si l'onglet Classement est actif, le mettre à jour pour le tour courant
@@ -1038,7 +1155,7 @@ function teamLines(members) {
 function getBrasseCount(t, ti) {
   if (!state.brasses) state.brasses = {};
   const k = `r${t}t${ti}`;
-  if (state.brasses[k] == null) state.brasses[k] = 1;
+  if (state.brasses[k] == null) state.brasses[k] = 4;
   return state.brasses[k];
 }
 
@@ -1086,7 +1203,7 @@ function renderRoundScores(t) {
       return `<td class="sc-cumul" data-cumul="r${t}t${ti}e${e}">${c == null ? '–' : c}</td>`;
     }).join('');
     const plusIcon = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>`;
-    const addBtn = nb < 5
+    const addBtn = nb < 8
       ? `<button class="sc-add" data-table="${ti}" title="Ajouter une brasse" aria-label="Ajouter une brasse">${plusIcon}</button>`
       : `<span class="sc-add-spacer"></span>`;
     tablesHtml += `
@@ -1130,9 +1247,9 @@ function renderRoundScores(t) {
   // brancher les boutons "+ Brasse"
   cont.querySelectorAll('.sc-add').forEach(btn => {
     btn.addEventListener('click', e => {
-      const ti = parseInt(e.target.dataset.table, 10);
+      const ti = parseInt(e.currentTarget.dataset.table, 10);
       const k = `r${t}t${ti}`;
-      if (state.brasses[k] < 5) state.brasses[k]++;
+      if (state.brasses[k] < 8) state.brasses[k]++;
       renderRoundScores(t);
     });
   });
@@ -1364,7 +1481,7 @@ function buildPlanPdf() {
     if (rIdx>0) doc.addPage();
     drawPlanPage(doc, round, rIdx, pageW, pageH, isFixed);
   });
-  doc.save(`Plan_tournoi_${state.N}j.pdf`);
+  showPdfPreview(doc, `Plan_tournoi_${state.N}j.pdf`, 'Tours');
 }
 
 /* ---- 2. LISTE DES JOUEURS / ÉQUIPES ---- */
@@ -1420,7 +1537,7 @@ function buildListPdf() {
       if (y > pageH - 20) { doc.addPage(); y = 20; col = 0; }
     }
   }
-  doc.save(`Liste_${isFixed?'equipes':'joueurs'}_${state.N}j.pdf`);
+  showPdfPreview(doc, `Liste_${isFixed?'equipes':'joueurs'}_${state.N}j.pdf`, 'Joueurs');
 }
 
 /* ---- 3. POINTAGE INDIVIDUEL (rotatif) / PAR ÉQUIPE (fixe) ---- */
@@ -1536,7 +1653,7 @@ function buildScoreIndividualPdf() {
     drawScoreSheet(doc, realId, sched, isFixed, margin, y, sheetW, sheetH);
     idx++;
   }
-  doc.save(`Pointage_${isFixed?'equipes':'individuel'}_${state.N}j.pdf`);
+  showPdfPreview(doc, `Pointage_${isFixed?'equipes':'individuel'}_${state.N}j.pdf`, 'Points');
 }
 
 /* ---- 4. POINTAGE TABLEAU = verso recto-verso du plan ----
@@ -1643,8 +1760,61 @@ function buildScoreTablePdf() {
     doc.addPage();
     drawRoundScorePage(doc, round, rIdx, pageW, pageH, isFixed); // verso : score
   });
-  doc.save(`Tableau_recto-verso_${state.N}j.pdf`);
+  showPdfPreview(doc, `Tableau_recto-verso_${state.N}j.pdf`, 'Tableau');
 }
+
+/* ---- Aperçu PDF : impression / téléchargement / partage ---- */
+let currentPdf = null; // { url, filename, blob }
+
+// Partage de fichier via la feuille de partage native (courriel, etc.)
+async function shareFile(blob, filename, mime, title) {
+  const file = new File([blob], filename, { type: mime });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title }); }
+    catch (e) { /* partage annulé par l'utilisateur */ }
+    return true;
+  }
+  return false;
+}
+function canShareFiles(mime) {
+  try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x', { type: mime })] })); }
+  catch (e) { return false; }
+}
+
+function showPdfPreview(doc, filename, title) {
+  if (currentPdf) { URL.revokeObjectURL(currentPdf.url); currentPdf = null; }
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  currentPdf = { url, filename, blob };
+  document.getElementById('pdf-frame').src = url;
+  document.getElementById('pdf-modal-title').textContent = title || 'Aperçu';
+  document.getElementById('pdf-share').style.display = canShareFiles('application/pdf') ? '' : 'none';
+  document.getElementById('pdf-modal').style.display = 'flex';
+}
+function closePdfPreview() {
+  document.getElementById('pdf-modal').style.display = 'none';
+  document.getElementById('pdf-frame').src = 'about:blank';
+  if (currentPdf) { URL.revokeObjectURL(currentPdf.url); currentPdf = null; }
+}
+document.getElementById('pdf-modal-close').addEventListener('click', closePdfPreview);
+document.getElementById('pdf-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('pdf-modal')) closePdfPreview();
+});
+document.getElementById('pdf-download').addEventListener('click', () => {
+  if (!currentPdf) return;
+  const a = document.createElement('a');
+  a.href = currentPdf.url; a.download = currentPdf.filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+});
+document.getElementById('pdf-print').addEventListener('click', () => {
+  if (!currentPdf) return;
+  const frame = document.getElementById('pdf-frame');
+  try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+  catch (e) { window.open(currentPdf.url, '_blank'); }
+});
+document.getElementById('pdf-share').addEventListener('click', () => {
+  if (currentPdf) shareFile(currentPdf.blob, currentPdf.filename, 'application/pdf', currentPdf.filename);
+});
 
 /* ---- Handlers PDF ---- */
 function guard(fn, label) {
@@ -1652,7 +1822,7 @@ function guard(fn, label) {
     if (!state) { setStatus('Génère d\'abord un tournoi.'); return; }
     setStatus('Génération : ' + label + '...');
     setTimeout(() => {
-      try { fn(); setStatus('✓ ' + label + ' téléchargé.'); }
+      try { fn(); setStatus('✓ ' + label + ' — aperçu prêt.'); }
       catch(e){ setStatus('⚠ Erreur : ' + e.message); }
     }, 50);
   };
@@ -1668,17 +1838,23 @@ document.getElementById('btn-names').addEventListener('click', () => {
   zone.style.display = open ? 'none' : 'block';
   document.getElementById('btn-names').textContent = open ? 'Joueurs' : 'Masquer';
 });
-// si le nombre de joueurs change pendant que la zone est ouverte, reconstruire
+// le nombre de joueurs suit le dropdown ; on ne peut pas descendre sous le nombre de noms saisis
 document.getElementById('n-input').addEventListener('change', () => {
+  const sel = document.getElementById('n-input');
+  const newN = parseInt(sel.value, 10);
+  const minN = maxNamedPlayer();
+  if (minN && newN < minN) {
+    sel.value = String(minN);
+    setStatus(`⚠ Des noms sont saisis jusqu'au joueur ${minN}. Supprime des noms (×) pour réduire le nombre de joueurs.`);
+  }
   const zone = document.getElementById('names-zone');
   if (zone.style.display !== 'none') buildNamesGrid();
 });
 
 /* ---- Profil : sauvegarder / charger / réinitialiser ---- */
-// Sauvegarde = config + noms + scores + brasses dans un fichier .json
-document.getElementById('btn-save').addEventListener('click', () => {
-  if (!state) { setStatus('⚠ Génère d\'abord une partie.'); return; }
-  const data = {
+// Données de sauvegarde = config + noms + scores + brasses
+function buildSaveData() {
+  return {
     app: 'tournoi-cartes', version: 1,
     config: {
       N: state.N, T: state.T, E: state.E, mode: state.mode,
@@ -1689,14 +1865,29 @@ document.getElementById('btn-save').addEventListener('click', () => {
     scores: state.scores || {},
     brasses: state.brasses || {}
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+}
+function saveFilename() { return `tournoi_${state.N}j_${new Date().toISOString().slice(0,10)}.json`; }
+
+// Sauvegarde dans un fichier .json
+document.getElementById('btn-save').addEventListener('click', () => {
+  if (!state) { setStatus('⚠ Génère d\'abord une partie.'); return; }
+  const blob = new Blob([JSON.stringify(buildSaveData(), null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `tournoi_${state.N}j_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = saveFilename();
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   setStatus('✓ Partie sauvegardée.');
+});
+
+// Envoyer la partie par courriel (feuille de partage native, .json en pièce jointe)
+document.getElementById('btn-share-game').addEventListener('click', async () => {
+  if (!state) { setStatus('⚠ Génère d\'abord une partie.'); return; }
+  const blob = new Blob([JSON.stringify(buildSaveData(), null, 2)], { type: 'application/json' });
+  const ok = await shareFile(blob, saveFilename(), 'application/json', 'Partie de tournoi');
+  if (ok) setStatus('✓ Envoi de la partie ouvert.');
+  else setStatus('⚠ Le partage n\'est pas disponible ici — utilise « Sauvegarder ».');
 });
 
 // Charger = relire un fichier .json et restaurer
@@ -1716,10 +1907,10 @@ document.getElementById('file-load').addEventListener('change', e => {
       document.getElementById('teams-per-table-input').value = c.E;
       document.getElementById('mode-input').value = c.mode;
       document.getElementById('move-input').value = c.move || 'pred';
+      playerNames = data.names || {};
       document.getElementById('mode-input').dispatchEvent(new Event('change'));
       document.getElementById('n-input').dispatchEvent(new Event('change'));
       if (document.getElementById('fixed-count')) document.getElementById('fixed-count').value = c.fixedCount || '0';
-      playerNames = data.names || {};
       // régénérer puis injecter scores/brasses
       generate();
       if (state) {
@@ -1817,6 +2008,10 @@ function getFixedPlayers() {
 /* ---- Init : rien n'est généré tant que l'utilisateur n'a pas cliqué ---- */
 updateScoreButtonLabels();
 refreshFixedZone();
+// Bouton « Envoyer la partie par courriel » : seulement si l'appareil sait partager des fichiers
+if (canShareFiles('application/json')) {
+  document.getElementById('btn-share-game').style.display = '';
+}
 </script>
 </body>
 </html>
