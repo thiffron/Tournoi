@@ -1118,7 +1118,7 @@ function renderTour(t) {
     grid.innerHTML = round.tables.map((teams, i) =>
       `<div class="table-card">${tableSvgGeneric(teams, i, false)}</div>`).join('');
     if (round.resting && round.resting.length) {
-      restSec.innerHTML = restingHtml(round.resting, 'joueur');
+      restSec.innerHTML = restingHtml(round.resting.map(p => playerLabel(p)), 'joueur');
     } else restSec.innerHTML = '';
     renderRoundScores(t);
   } else {
@@ -1327,7 +1327,7 @@ function restingHtml(items, kind) {
   return `<div class="resting-card">
     <h3>Au repos ce tour (${items.length} ${kind}${items.length>1?'s':''})</h3>
     <div class="resting-players">
-      ${items.map(x => `<span class="resting-chip">${x}</span>`).join('')}
+      ${items.map(x => `<span class="resting-chip">${escapeHtml(x)}</span>`).join('')}
     </div></div>`;
 }
 
@@ -1496,7 +1496,7 @@ function drawPlanPage(doc, round, rIdx, pageW, pageH, isFixed) {
   if (isFixed && round.restingTeams && round.restingTeams.length)
     restItems = round.restingTeams.map(gi => 'Éq. '+String.fromCharCode(65+gi));
   else if (!isFixed && round.resting && round.resting.length)
-    restItems = round.resting.map(String);
+    restItems = round.resting.map(p => playerLabel(p));
   if (restItems.length) {
     const ry = pageH-20;
     doc.setFillColor(241,239,232); doc.setDrawColor(211,209,199); doc.setLineWidth(0.3);
